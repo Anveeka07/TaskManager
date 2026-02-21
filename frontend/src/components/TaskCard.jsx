@@ -1,4 +1,5 @@
 import React from "react";
+import { normalizePriority, normalizeStatus } from "../utils/taskNormalize";
 
 const statusMap = {
   Completed: { bg: "#e8f5e9", fg: "#2e7d32", border: "#81c784" },
@@ -28,8 +29,8 @@ const priorityMap = {
 };
 
 function TaskCard({ task, onEdit, onDelete }) {
-  const status = task.status || "Pending";
-  const priority = task.priority || "Medium";
+  const status = normalizeStatus(task.status);
+  const priority = normalizePriority(task.priority);
 
   const statusUi = statusMap[status] || statusMap.Pending;
   const priorityUi = priorityMap[priority] || priorityMap.Medium;

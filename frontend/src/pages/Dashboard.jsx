@@ -5,6 +5,7 @@ import TaskCard from "../components/TaskCard";
 import TaskModal from "../components/TaskModal";
 import api from "../utils/api";
 import getErrorMessage from "../utils/getErrorMessage";
+import { normalizePriority, normalizeStatus, normalizeTask } from "../utils/taskNormalize";
 
 function Dashboard() {
   const { user } = useContext(AuthContext);
@@ -27,7 +28,7 @@ function Dashboard() {
     const fetchTasks = async () => {
       try {
         const { data } = await api.get("/tasks");
-        setTasks(data);
+        setTasks((Array.isArray(data) ? data : []).map(normalizeTask));
       } catch (error) {
         setPageError(getErrorMessage(error, "Could not load tasks"));
       } finally {
@@ -94,13 +95,19 @@ function Dashboard() {
   };
 
   const handleSaveTask = async (payload) => {
+    const normalizedPayload = {
+      ...payload,
+      status: normalizeStatus(payload.status),
+      priority: normalizePriority(payload.priority),
+    };
+
     try {
       if (taskToEdit?._id) {
-        const { data } = await api.put(`/tasks/${taskToEdit._id}`, payload);
-        setTasks((prev) => prev.map((item) => (item._id === taskToEdit._id ? data : item)));
+        const { data } = await api.put(`/tasks/${taskToEdit._id}`, normalizedPayload);
+        setTasks((prev) => prev.map((item) => (item._id === taskToEdit._id ? normalizeTask(data) : item)));
       } else {
-        const { data } = await api.post("/tasks", payload);
-        setTasks((prev) => [data, ...prev]);
+        const { data } = await api.post("/tasks", normalizedPayload);
+        setTasks((prev) => [normalizeTask(data), ...prev]);
       }
     } catch (error) {
       throw new Error(getErrorMessage(error, "Failed to save task"));

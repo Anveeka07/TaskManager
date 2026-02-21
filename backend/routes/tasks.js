@@ -9,20 +9,62 @@ const router = express.Router();
 const ALLOWED_STATUS = ["Pending", "In Progress", "Completed"];
 const ALLOWED_PRIORITY = ["Low", "Medium", "High"];
 
+const normalizeStatus = (value) => {
+  if (typeof value !== "string") return value;
+  const key = value.trim().toLowerCase();
+
+  const map = {
+    pending: "Pending",
+    incomplete: "Pending",
+    todo: "Pending",
+    "in progress": "In Progress",
+    inprogress: "In Progress",
+    progress: "In Progress",
+    completed: "Completed",
+    complete: "Completed",
+    done: "Completed",
+  };
+
+  return map[key] || value;
+};
+
+const normalizePriority = (value) => {
+  if (typeof value !== "string") return value;
+  const key = value.trim().toLowerCase();
+
+  const map = {
+    low: "Low",
+    medium: "Medium",
+    med: "Medium",
+    high: "High",
+    urgent: "High",
+    critical: "High",
+  };
+
+  return map[key] || value;
+};
+
 const validateTaskPayload = (payload, isUpdate = false) => {
   const errors = [];
 
   if (!isUpdate || payload.title !== undefined) {
     const title = payload.title?.trim();
     if (!title) errors.push("Title is required");
-    else if (title.length < 3) errors.push("Title must be at least 3 characters");
+    else if (title.length < 3)
+      errors.push("Title must be at least 3 characters");
   }
 
-  if (payload.status !== undefined && !ALLOWED_STATUS.includes(payload.status)) {
+  if (
+    payload.status !== undefined &&
+    !ALLOWED_STATUS.includes(payload.status)
+  ) {
     errors.push("Invalid status value");
   }
 
-  if (payload.priority !== undefined && !ALLOWED_PRIORITY.includes(payload.priority)) {
+  if (
+    payload.priority !== undefined &&
+    !ALLOWED_PRIORITY.includes(payload.priority)
+  ) {
     errors.push("Invalid priority value");
   }
 
@@ -31,16 +73,23 @@ const validateTaskPayload = (payload, isUpdate = false) => {
 
 router.post("/", auth, async (req, res) => {
   try {
-    const errors = validateTaskPayload(req.body);
+    const payload = {
+      title: req.body.title,
+      description: req.body.description,
+      status: normalizeStatus(req.body.status),
+      priority: normalizePriority(req.body.priority),
+    };
+
+    const errors = validateTaskPayload(payload);
     if (errors.length) {
       return res.status(400).json({ message: errors[0] });
     }
 
     const task = await Task.create({
-      title: req.body.title,
-      description: req.body.description,
-      status: req.body.status,
-      priority: req.body.priority,
+      title: payload.title?.trim(),
+      description: payload.description?.trim(),
+      status: payload.status,
+      priority: payload.priority,
       user: req.userId,
     });
 
@@ -88,6 +137,25 @@ router.put("/:id", auth, async (req, res) => {
       if (req.body[key] !== undefined) updates[key] = req.body[key];
     });
 
+    if (updates.status !== undefined) {
+      updates.status = normalizeStatus(updates.status);
+    }
+
+    if (updates.priority !== undefined) {
+      updates.priority = normalizePriority(updates.priority);
+    }
+
+    if (updates.title !== undefined && typeof updates.title === "string") {
+      updates.title = updates.title.trim();
+    }
+
+    if (
+      updates.description !== undefined &&
+      typeof updates.description === "string"
+    ) {
+      updates.description = updates.description.trim();
+    }
+
     if (!Object.keys(updates).length) {
       return res.status(400).json({ message: "No fields to update" });
     }
@@ -119,7 +187,10 @@ router.delete("/:id", auth, async (req, res) => {
       return res.status(400).json({ message: "Invalid task id" });
     }
 
-    const deleted = await Task.findOneAndDelete({ _id: req.params.id, user: req.userId });
+    const deleted = await Task.findOneAndDelete({
+      _id: req.params.id,
+      user: req.userId,
+    });
     if (!deleted) {
       return res.status(404).json({ message: "Task not found" });
     }
