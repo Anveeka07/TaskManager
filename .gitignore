@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+
+# dependencies
+node_modules/
+
+# build output
+frontend/dist/
+backend/dist/
+
+# env
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# editor
+.vscode/
+.idea/
+
+# misc
+coverage/
+*.local
